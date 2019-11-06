@@ -518,7 +518,8 @@ final class RequestConverters {
             .withRefresh(reindexRequest.isRefresh())
             .withTimeout(reindexRequest.getTimeout())
             .withWaitForActiveShards(reindexRequest.getWaitForActiveShards(), ActiveShardCount.DEFAULT)
-            .withRequestsPerSecond(reindexRequest.getRequestsPerSecond());
+            .withRequestsPerSecond(reindexRequest.getRequestsPerSecond())
+            .withSlices(reindexRequest.getSlices());
 
         if (reindexRequest.getScrollTime() != null) {
             params.putParam("scroll", reindexRequest.getScrollTime());
@@ -528,6 +529,14 @@ final class RequestConverters {
     }
 
     static Request updateByQuery(UpdateByQueryRequest updateByQueryRequest) throws IOException {
+        return prepareUpdateByQuery(updateByQueryRequest, true);
+    }
+
+    static Request submitUpdateByQuery(UpdateByQueryRequest updateByQueryRequest) throws IOException {
+        return prepareUpdateByQuery(updateByQueryRequest, false);
+    }
+
+    static Request prepareUpdateByQuery(UpdateByQueryRequest updateByQueryRequest, boolean waitForCompletion) throws IOException {
         String endpoint =
             endpoint(updateByQueryRequest.indices(), updateByQueryRequest.getDocTypes(), "_update_by_query");
         Request request = new Request(HttpPost.METHOD_NAME, endpoint);
@@ -538,7 +547,11 @@ final class RequestConverters {
             .withTimeout(updateByQueryRequest.getTimeout())
             .withWaitForActiveShards(updateByQueryRequest.getWaitForActiveShards(), ActiveShardCount.DEFAULT)
             .withRequestsPerSecond(updateByQueryRequest.getRequestsPerSecond())
-            .withIndicesOptions(updateByQueryRequest.indicesOptions());
+            .withIndicesOptions(updateByQueryRequest.indicesOptions())
+            .withSlices(updateByQueryRequest.getSlices());
+        if (!waitForCompletion) {
+            params.withWaitForCompletion(waitForCompletion)
+        }
         if (updateByQueryRequest.isAbortOnVersionConflict() == false) {
             params.putParam("conflicts", "proceed");
         }
@@ -840,6 +853,10 @@ final class RequestConverters {
 
         Params withRouting(String routing) {
             return putParam("routing", routing);
+        }
+
+        Params withSlices(int slices) {
+            return putParam("slices", String.valueOf(slices));
         }
 
         Params withStoredFields(String[] storedFields) {
